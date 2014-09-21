@@ -1,0 +1,119 @@
+---
+title: "Investigation of distribution of averages of 40 exponential (0.02)s by simulation"
+author: "Victor Rainier Cruz Perez"
+date: "September 20th, 2014"
+output: pdf_document
+---
+
+
+### 1. Show where the distribution is centered at and compare it to the theoretical center of the distribution
+
+Explore Exponential Distribution with Lambda = 0.2
+
+1. Run 1000 times a sampling of 40 exponential random numbers and plot their averages
+
+```{r,warning=F,message=F}
+require(plyr);require(ggplot2);require(scales)
+set.seed(22222)
+n=40
+lambda=0.2
+samples=1000
+##Generating the data frame
+data <- data.frame(Measure="Sample Means",value=sapply(1:samples,function(x)
+        mean(rexp(n,lambda))),stringsAsFactors=F)
+means<- data.frame(Type=c("Calculated Mean","Theoretical Mean"),
+        mean=c(mean(data$value),1/lambda))
+sd_calc <- sd(data$value)
+```
+
+2. Plotting both the Calculated and Theoretical Mean for the above sampling
+```{r,warning=F,message=F}
+title <- expression(
+      paste("Sample Means for Exponential Dististribution(",lambda, "=", "0.2",")",sep=""))
+## Creating the Plot
+ggplot(data,aes(x=value))+geom_histogram(alpha=0.6,fill="gray")+
+         theme_bw()+theme(legend.position="bottom")+ggtitle(title)+
+         coord_cartesian(xlim=c(2,8))+
+         geom_vline(data=means,aes(xintercept=mean,color=Type,linetype=Type),
+         show_guide = TRUE)+
+         guides(color=guide_legend(title=NULL),linetype=guide_legend(title=NULL))+
+         scale_y_continuous("Number of Observations",labels=comma)
+```
+
+In the figure above, one can observe that the distribution of means of 40 exponential random numbers  with $\lambda$ =0.2 -repeated 1,000 times. Where the red line represents the calcutated average of the 
+sample means -`r mean(data$value)`. On the other hand, the blue line represents the theoretical mean of the exponential distribution -$\frac{1}{\lambda}$ = 5. 
+
+### 2. Show how variable it is and compare it to the theoretical variance of the distribution
+
+```{r,warning=F,message=F}
+title <- expression(
+      paste("Sample Means for Exponential Dististribution(",lambda, "=", "0.2",")",sep=""))
+## Creating the Plot
+ggplot(data,aes(x=value))+geom_histogram(alpha=0.6,fill="gray")+
+         theme_bw()+theme(legend.position="bottom")+ggtitle(title)+
+         coord_cartesian(xlim=c(2,8))+
+         geom_vline(data=means,aes(xintercept=mean,color=Type,linetype=Type),
+         show_guide = TRUE)+
+         guides(color=guide_legend(title=NULL),linetype=guide_legend(title=NULL))+
+         scale_y_continuous("Number of Observations",labels=comma)+
+         geom_line(data=NULL,aes(x=c(mean(data$value)-sd_calc/2,mean(data$value)+sd_calc/2),
+         y=c(50,50)),color="yellow")
+```
+
+
+The yellow horizontal line, in the figure above, shows the calculated standard deviation of the sample means centered around the calculated sample mean which is equal to  `r round(sd_calc,2)`. 
+
+The central limit theorem defines the standard error equal to the standard deviation of the actual distribution divided by $\sqrt{n}$, where n is the sample size (40), the estimated standard deviation for the exercise population is `r round(sd_calc*sqrt(n),2)` which is close to the theoretical value of $\frac{1}{\lambda}=5$
+
+### 3. Show that the distribution is approximately normal
+From the figure above, one can observe that the distribution of sample means seems to be normal distributed centered among it's distribution mean
+
+
+### 4. Evaluate the coverage of the confidence interval for 1/lambda: X±1.96Sn
+
+```{r}
+## Number of Samples
+n=40
+
+##Function for calculating the First Coverage
+Funccoverage1 <- function(lambda) {sapply(lambda, function(lambda){
+    lhats <- mean(rexp(n, lambda))
+       ll <- lhats - qnorm(.975) * (lhats/sqrt(n))
+       ul <- lhats + qnorm(.975) * (lhats/sqrt(n))
+              (ll < (1/lambda) &  (1/lambda) < ul)})}
+
+##Calculating the Second Coverage
+Funccoverage2 <- function(n1) {sapply(lambda, function(lambda){
+    lhats <- mean(rexp(n1, lambda))
+       ll <- lhats - qnorm(.975) * (lhats/sqrt(n1))
+       ul <- lhats + qnorm(.975) * (lhats/sqrt(n1))
+              (ll < (1/lambda) &  (1/lambda) < ul)})}
+
+## Creating the comparisson data frame
+set.seed(22222)
+##Creating the data frame with the Function (z) of distinct Lambda values
+dat <- data.frame(`Changing Measure`="Lambda",Measure=seq(0.1,.9,.1),
+       coverage=sapply(seq(0.1,.9,.1),function(y) mean(sapply(1:samples,
+       function(z) Funccoverage1(y)))))
+
+lmbda=0.2
+
+##Creating the data frame with the Function (z) of distinct number of samples
+dat1 <- data.frame(`Changing Measure`="Number of Samples",Measure=seq(5,100,5),
+        coverage=sapply(seq(5,100,5),function(y) mean(sapply(1:samples,
+        function(z) Funccoverage2(y)))))
+
+##Compiling the data
+data <- rbind(dat,dat1)
+
+##Data Plotting
+
+ggplot(data,aes(x=Measure,y=coverage,color=Changing.Measure))+
+       geom_hline(yintercept=0.95,col='black',linetype="dashed")+
+       geom_line()+geom_point()+coord_cartesian(ylim=c(.8,1))+
+       scale_y_continuous("Confidence Interval Coverage",labels=percent)+
+       facet_wrap(~Changing.Measure,scales="free_x")+theme_bw()+
+       theme(legend.position="bottom")+
+       ggtitle("Sensitivity of Coverage Interval")
+```
+The left part of the figure above, shows the behavior of different lambda values for 1,000 simulations of 40 exponential samples versus the 95% confidence threshold. On the other hand, the right part of the figure above, represents the behavior for 1,000 simulations of different exponential samples for $lambda$ = 0.2 versus the 95% confidence threshold. From the analysis of both sides of the picture, one can observe that as the sample size increases the predictability improves; however, the 95% confidence threshold is not reached all the times as the sample size increases.
